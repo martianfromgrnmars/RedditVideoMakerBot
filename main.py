@@ -44,12 +44,29 @@ print_markdown(
 checkversion(__VERSION__)
 
 
+def print_caption(caption):
+    print("\nCaption:", caption)
+
+
+def tts_read(text):
+    engine = pyttsx3.init()
+    engine.say(text)
+    engine.runAndWait()
+    
+    
+def show_captions_with_tts(captions):
+    for caption in captions:
+        print_caption(caption)
+        tts_read(caption)
+
+
 def main(POST_ID=None) -> None:
-    global redditid, reddit_object
     reddit_object = get_subreddit_threads(POST_ID)
     redditid = id(reddit_object)
     length, number_of_comments = save_text_to_mp3(reddit_object)
     length = math.ceil(length)
+    captions = get_captions(reddit_object)  # Replace this with the function to get captions
+    show_captions_with_tts(captions)  # Call the new function to display captions with TTS
     get_screenshots_of_reddit_posts(reddit_object, number_of_comments)
     bg_config = {
         "video": get_background_config("video"),
@@ -81,16 +98,14 @@ def shutdown() -> NoReturn:
 
 if __name__ == "__main__":
     if sys.version_info.major != 3 or sys.version_info.minor != 10:
-        print(
-            "Hey! Congratulations, you've made it so far (which is pretty rare with no Python 3.10). Unfortunately, this program only works on Python 3.10. Please install Python 3.10 and try again."
-        )
-        sys.exit()
+        # ... (Python version check)
     ffmpeg_install()
     directory = Path().absolute()
     config = settings.check_toml(
         f"{directory}/utils/.config.template.toml", f"{directory}/config.toml"
     )
     config is False and sys.exit()
+
 
     if (
         not settings.config["settings"]["tts"]["tiktok_sessionid"]
@@ -101,26 +116,26 @@ if __name__ == "__main__":
             "bold red",
         )
         sys.exit()
-    try:
-        if config["reddit"]["thread"]["post_id"]:
-            for index, post_id in enumerate(config["reddit"]["thread"]["post_id"].split("+")):
-                index += 1
-                print_step(
-                    f'on the {index}{("st" if index % 10 == 1 else ("nd" if index % 10 == 2 else ("rd" if index % 10 == 3 else "th")))} post of {len(config["reddit"]["thread"]["post_id"].split("+"))}'
-                )
-                main(post_id)
-                Popen("cls" if name == "nt" else "clear", shell=True).wait()
-        elif config["settings"]["times_to_run"]:
-            run_many(config["settings"]["times_to_run"])
-        else:
-            main()
-    except KeyboardInterrupt:
-        shutdown()
-    except ResponseException:
-        print_markdown("## Invalid credentials")
+try:
+    if config["reddit"]["thread"]["post_id"]:
+        for index, post_id in enumerate(config["reddit"]["thread"]["post_id"].split("+")):
+            index += 1
+            print_step(
+                f'on the {index}{("st" if index % 10 == 1 else ("nd" if index % 10 == 2 else ("rd" if index % 10 == 3 else "th")))} post of {len(config["reddit"]["thread"]["post_id"].split("+"))}'
+            )
+            main(post_id)
+            Popen("cls" if name == "nt" else "clear", shell=True).wait()
+    elif config["settings"]["times_to_run"]:
+        run_many(config["settings"]["times_to_run"])
+    else:
+        main()
+except KeyboardInterrupt:
+    shutdown()
+except ResponseException:
+       print_markdown("## Invalid credentials")
         print_markdown("Please check your credentials in the config.toml file")
         shutdown()
-    except Exception as err:
+except Exception as err:
         config["settings"]["tts"]["tiktok_sessionid"] = "REDACTED"
         config["settings"]["tts"]["elevenlabs_api_key"] = "REDACTED"
         print_step(
